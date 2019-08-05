@@ -1,0 +1,39 @@
+<!-- 启动所有语音节点的launch file-->
+<launch>
+	
+	<arg name="dict" default="/home/zmx/catkin_ws/src/kamerider_speech/GPSR/6534.dic" />
+	<arg name="kws"  default="/home/zmx/catkin_ws/src/kamerider_speech/GPSR/gpsr.kwlist" />
+	
+	<param name="is_restart" value="false" />
+
+	<param name="wait_for_command" value="false" />
+
+	<include file="$(find pocketsphinx)/launch/kws.launch">
+		<arg name="dict" value="$(arg dict)" />
+		<arg name="kws"  value="$(arg kws)" />
+	</include>
+	
+	<include file="$(find rchomeedu_arm)/launch/arm.launch"/>
+	<node pkg="rchomeedu_arm" type="catch.py" name="catch" />
+
+	<!-- 启动截取音频的节点-->
+	<!--<node pkg="restaurant" type="get_audio_res.py" name="get_audio_res" launch-prefix="xterm -e" respawn="true" respawn_delay="1" />
+	
+	
+	<node pkg="restaurant" type="speech_recognition_res.py" name="speech_recognition_res" launch-prefix="xterm -e" respawn="true" respawn_delay="1" />-->
+
+	<node pkg="sound_play" type="soundplay_node.py" name="sound_play" launch-prefix="xterm -e" />
+	<node pkg="xfei_asr" type="speech_recognition" name="speech_recognition" launch-prefix="xterm -e" respawn="true" respawn_delay="1" />
+
+	<node pkg="restaurant" type="res_control.py" name="res_control" launch-prefix="xterm -e" />
+
+
+	<!-- 启动摄像头 astra/primesense -->
+	<!--<include file="$(find astra_launch)/launch/astra.launch">
+		<arg name="camera" value="camera1" />
+	</include>-->
+	<!--<include file="$(find openni2_launch)/launch/openni2.launch">-->
+		
+
+
+</launch>

@@ -1,0 +1,10 @@
+<launch>
+	<arg name="dict" default="/home/keaixin/catkin_ws/pocketsphinx sentnece /TAR0354/0354.dic" />
+	<arg name="kws"  default="/home/keaixin/catkin_ws/pocketsphinx sentnece /TAR0354/0354.kwlist" />
+	<param name="is_restart" value="false"/>
+
+	<include file="$(find pocketsphinx)/launch/kws.launch">
+		<arg name="dict" value="$(arg dict)" />
+		<arg name="kws"  value="$(arg kws)" />
+	</include>
+</launch>

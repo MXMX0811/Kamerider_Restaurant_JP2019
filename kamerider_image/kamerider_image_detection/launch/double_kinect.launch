@@ -1,0 +1,83 @@
+<launch>
+    <!-- Parameters possible to change-->
+    <arg name="camera_up_id"    default="A00364A06800124A" /><!--here you can change 1@0 by the serial number -->
+    <arg name="camera_down_id"  default="B00365625703135B" /><!--here you can change 2@0 by the serial number -->
+    <!--arg name="camera1_id" default="B00366600710131B" /--><!--here you can change 1@0 by the serial number -->
+    <!--arg name="camera2_id" default="B00364210621048B" /--><!--here you can change 2@0 by the serial number -->
+    <!--arg name="camera3_id" default="#3" /--><!--here you can change 3@0 by the serial number -->
+    <arg name="depth_registration" default="false"/>
+
+    <!-- Default parameters-->
+    <arg name="camera_up_name"      default="kinect_up" />
+    <arg name="camera_down_name"    default="camera" />
+    <!--arg name="camera3_name" default="kinect3" /-->
+
+    <!-- Putting the time back to realtime-->
+    <rosparam>
+    /use_sim_time : false
+    </rosparam>
+
+    <!-- Launching first kinect-->
+    <include file="$(find freenect_launch)/launch/freenect.launch">
+    <arg name="device_id" value="$(arg camera_up_id)"/>
+    <arg name="camera" value="$(arg camera_up_name)"/>
+    <arg name="depth_registration" value="$(arg depth_registration)" />
+
+    <node name="rviz" pkg="rviz" type="rviz"/>
+    </include>
+
+    <!-- Launching second kinect-->
+    <!--
+     -->
+    <include file="$(find freenect_launch)/launch/freenect.launch">
+    <arg name="device_id" value="$(arg camera_down_id)"/>
+    <arg name="camera" value="$(arg camera_down_name)"/>
+    <arg name="depth_registration" value="$(arg depth_registration)" />
+    
+
+    <node name="rviz" pkg="rviz" type="rviz"/>
+    </include>
+
+  <!-- Laserscan topic -->
+  <arg name="scan_topic" default="scan"/>
+  <arg name="depth" default="depth"/>
+
+    <node pkg="nodelet" type="nodelet" name="depthimage_to_laserscan" args="load depthimage_to_laserscan/DepthImageToLaserScanNodelet camera/camera_nodelet_manager">
+      <!-- Pixel rows to use to generate the laserscan. For each column, the scan will
+           return the minimum value for those pixels centered vertically in the image. -->
+      <param name="scan_height" value="10"/>
+      <param name="output_frame_id" value="/camera_depth_frame"/>
+      <param name="range_min" value="0.45"/>
+      <remap from="image" to="camera/$(arg depth)/image_raw"/>
+      <remap from="scan" to="$(arg scan_topic)"/>
+
+      <!-- Somehow topics here get prefixed by "camera" when not inside an app namespace,
+           so in this case "$(arg scan_topic)" must provide an absolute topic name (issue #88).
+           Probably is a bug in the nodelet manager: https://github.com/ros/nodelet_core/issues/7 -->
+      <remap from="camera/image" to="camera/$(arg depth)/image_raw"/>
+      <remap from="camera/scan" to="$(arg scan_topic)"/>
+    </node>
+
+
+
+    <!-- 设置摄像头参数 -->
+    <!--
+    <include file="$(find turtlebot_bringup)/launch/3dsensor.launch">
+    <arg name="rgb_processing" value="false" />
+    <arg name="depth_registration" value="false" />
+    <arg name="depth_processing" value="false" />
+    <arg name="scan_topic" value="/scan" />
+    <arg name="camera" value="camera" />
+    </include>
+    -->
+
+
+    <!-- Launching third kinect-->
+    <!--include file="$(find openni_launch)/launch/openni.launch"-->
+    <!--arg name="device_id" value="$(arg camera3_id)"/-->
+    <!--arg name="camera" value="$(arg camera3_name)"/-->
+    <!--arg name="depth_registration" value="$(arg depth_registration)" /-->
+    <!--/include-->
+
+</launch>
+

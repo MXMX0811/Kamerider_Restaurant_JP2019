@@ -1,0 +1,29 @@
+<launch>
+
+    <!----><include file="$(find turtlebot_bringup)/launch/minimal.launch" />
+    <!--<include file="$(find freenect_launch)/launch/freenect.launch" />-->
+    <!--<include file="$(find kamerider_image_detection)/launch/gender_recognition_demo.launch" />
+    <node name="turn_robot_server" pkg="navigation" type="turn_robot_server"/>-->
+    <arg name="pub_riddle_start_topic_name"          default="/riddle_start" />
+    <arg name="sub_riddle_finish_topic_name"         default="/riddle_finish" />
+    <arg name="pub_take_photo_signal_topic_name"     default="/take_photo_signal" />
+    <arg name="sub_gender_recognition_topic_name"    default="$(find kamerider_image_detection)/gender_recognition" />
+    <!--<arg name="sub_face_recognition_topic_name"      default="$(find kamerider_image_detection)/face_recognition" />-->
+
+    <node name="SPR_sample" pkg="kamerider_image_detection" type="SPR_sample" launch-prefix="xterm -e">
+        <param name="sub_riddle_finish_topic_name"          type="string" value="$(arg sub_riddle_finish_topic_name)" />
+        <param name="pub_riddle_start_topic_name"           type="string" value="$(arg pub_riddle_start_topic_name)" />
+        <param name="pub_take_photo_signal_topic_name"      type="string" value="$(arg pub_take_photo_signal_topic_name)" />
+        <param name="sub_gender_recognition_topic_name"     type="string" value="$(arg sub_gender_recognition_topic_name)" />
+        <!--<param name="sub_face_recognition_topic_name"       type="string" value="$(arg sub_face_recognition_topic_name)" />-->
+    </node>
+    <node name="sound_play" pkg="sound_play" type="soundplay_node.py" launch-prefix="xterm -e" respawn="true" respawn_delay="1" />
+    <node name="gender_recognition" pkg="kamerider_image_detection" type="gender_recognition.py" launch-prefix="xterm -e" />
+    <!--<node name="kamerider_navigation" pkg="turn_robot_server" type="turn_robot_server.cpp" launch-prefix="xterm -e" />-->
+    <!--<node name="uvc_camera_node" pkg="uvc_camera" type="uvc_camera_node" output="screen" />-->
+
+
+
+
+
+</launch>

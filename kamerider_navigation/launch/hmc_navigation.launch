@@ -1,0 +1,31 @@
+<launch>
+    <!-- 加载地图 -->
+    <arg name="map_file" default="$(find kamerider_navigation)/maps/314.yaml" /> 
+    <node pkg="map_server" type="map_server" name="map_server" args="$(arg map_file)" />
+
+    <!-- 设置amcl-->
+    <arg name="initial_pose_x" default="10.5609"/> <!-- 设置初始坐标 -->
+    <arg name="initial_pose_y" default="7.30669"/> 
+    <arg name="initial_pose_a" default="0.0"/>
+
+    <include file="$(find turtlebot_navigation)/launch/includes/amcl/amcl.launch.xml">
+    <arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
+    <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
+    <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
+    </include>
+
+    <!-- 加载move_base -->
+    <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
+
+    <!-- 3D visualization -->
+    <include file="$(find turtlebot_rviz_launchers)/launch/view_navigation.launch" />
+    <node pkg="kamerider_navigation" type="hmc_navigation" name="hmc_navigation" launch-prefix="xterm -e" />
+    <!-- 设置摄像头参数 -->
+    <include file="$(find turtlebot_bringup)/launch/3dsensor.launch">
+    <arg name="rgb_processing" value="true" />
+    <arg name="depth_registration" value="false" />
+    <arg name="depth_processing" value="true" />
+    <arg name="scan_topic" value="/scan" />
+    <arg name="camera" value="camera" />
+    </include>
+</launch>
