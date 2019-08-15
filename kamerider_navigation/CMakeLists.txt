@@ -184,9 +184,9 @@ add_executable(fmm_navigation src/fmm_navigation.cpp)
 target_link_libraries(fmm_navigation ${catkin_LIBRARIES})
 add_dependencies(fmm_navigation ${kamerider_navigation_EXPORTED_TARGETS})
 
-add_executable(open_navigation src/open_navigation.cpp)
-target_link_libraries(open_navigation ${catkin_LIBRARIES})
-add_dependencies(open_navigation ${kamerider_navigation_EXPORTED_TARGETS})
+#add_executable(open_navigation src/open_navigation0.cpp)
+#target_link_libraries(open_navigation ${catkin_LIBRARIES})
+#add_dependencies(open_navigation ${kamerider_navigation_EXPORTED_TARGETS})
 
 add_executable(res_navigation src/res_navigation.cpp)
 target_link_libraries(res_navigation ${catkin_LIBRARIES})

@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <launch>
     <!-- 设置摄像头参数 -->
     <include file="$(find turtlebot_bringup)/launch/3dsensor.launch">
@@ -9,7 +10,7 @@
     </include>
 
     <!-- 加载地图 -->
-    <arg name="map_file" default="$(find kamerider_navigation)/maps/sydney_room_1.yaml" /> 
+    <arg name="map_file" default="$(find kamerider_navigation)/maps/314.yaml" /> 
     <node pkg="map_server" type="map_server" name="map_server" args="$(arg map_file)" />
 
     <!-- 设置amcl-->
@@ -27,5 +28,5 @@
     <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
 
     <!-- 3D visualization -->
-   <!-- <include file="$(find turtlebot_rviz_launchers)/launch/view_navigation.launch" />-->
+    <include file="$(find turtlebot_rviz_launchers)/launch/view_navigation.launch" />
 </launch>

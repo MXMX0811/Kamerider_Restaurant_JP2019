@@ -267,6 +267,9 @@ public:
         }
         case Start:
         {
+          
+          ros::topic::waitForMessage<std_msgs::String>("/start",node);
+          	
           cout<<"======================================="<<endl;
           ROS_INFO("START SPEECH AND PERSON RECOGNITION");
           ros::Duration(1).sleep();
@@ -393,7 +396,7 @@ public:
             sound_client.say("Hello my name is Jack");
             ros::Duration(3).sleep();
             sound_client.say("before each question please say hi Jack to me ");
-            //ros::Duration(5).sleep();
+            ros::Duration(5).sleep();
             //sound_client.say("I am ready for your command if you hear");
             //ros::Duration(4).sleep();
             //sound_client.playWave("/home/keaixin/catkin_ws/src/kamerider_speech/sounds/question_start_signal.wav");
@@ -463,7 +466,7 @@ public:
           {
             //step++;
             system("rosnode kill /locate_sound");
-            step = step + 2;
+            step = step + 1;
           }
           break;
         }
@@ -484,13 +487,13 @@ public:
           MoveBaseClient  mc_("move_base", true); //建立导航客户端
 	        move_base_msgs::MoveBaseGoal naviGoal; //导航目标点
           // the exit position
-          goal_pose.position.x = 10.8219;
-          goal_pose.position.y = 6.91687;
+          goal_pose.position.x = -3.0254;
+          goal_pose.position.y = 6.48455;
           goal_pose.position.z = 0;
           goal_pose.orientation.x = 0;
           goal_pose.orientation.y = 0;
-          goal_pose.orientation.z = 0.764717;
-          goal_pose.orientation.w = 0.644366;
+          goal_pose.orientation.z = -0.963965;
+          goal_pose.orientation.w = 0.266029;
           naviGoal.target_pose.header.frame_id = "map"; 
           naviGoal.target_pose.header.stamp = ros::Time::now();
           naviGoal.target_pose.pose = geometry_msgs::Pose(goal_pose);

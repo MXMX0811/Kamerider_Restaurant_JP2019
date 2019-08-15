@@ -41,7 +41,7 @@ class restaurant(object):
     def __init__(self):
         rospy.on_shutdown(self.cleanup)
         self.voice = rospy.get_param("~voice", "voice_kal_diphone")
-        self.question_start_signal = rospy.get_param("~question_start_signal", "/home/amore/robook_ws/src/kamerider_speech/sounds/question_start_signal.wav")
+        self.question_start_signal = rospy.get_param("~question_start_signal", "/home/zmx/catkin_ws/src/kamerider_speech/sounds/question_start_signal.wav")
 
         self.pub_destination_topic_name = None
         self.pub_kws_topic_name         = None
@@ -57,7 +57,7 @@ class restaurant(object):
         self.sub_camera_topic_name       = None
 
         # Variables
-        self.path_save = '/home/amore/robook_ws/src/restaurant/result/man_in_yellow.jpg'
+        self.path_save = '/home/zmx/catkin_ws/src/restaurant/result/man_in_yellow.jpg'
         self.objects = ['tuna','nutella','jelly','pringles','tea','noodle','juice','pepsi','bean']
         self.object = ''
         self.is_stop            = False
@@ -90,15 +90,15 @@ class restaurant(object):
         print("[INFO] START")
         while True:
             if self.is_start_find_person:
-                file_path = '/home/amore/robook_ws/data/haarcascades/haarcascade_frontalface_default.xml'
+                file_path = '/home/zmx/catkin_ws/data/haarcascades/haarcascade_frontalface_default.xml'
                 # 人脸识别分类器
                 faceCascade = cv2.CascadeClassifier(file_path)
                 # 开启摄像头
                 cap = cv2.VideoCapture(1)
                 ok = True
                 # set yellow thresh[0, 70, 70], [100, 255, 255]
-                lower_yellow = np.array([0, 70, 70])
-                upper_yellow = np.array([100, 255, 255])
+                lower_yellow = np.array([0, 105, 139])
+                upper_yellow = np.array([37, 255, 255])
                 kernel_4 = np.ones((4,4),np.uint8)#4x4的卷积核
                 while not self.is_find_person:
                     # 读取摄像头中的图像，ok为是否读取成功的判断参数
@@ -129,9 +129,16 @@ class restaurant(object):
                     
                     if len(contours) == 0:
                         print('[INFO] Fail to find the costumer')
-                        msg = Twist()
-                        msg.angular.z = 0.35
-                        self.pub_twist.publish(msg)
+                        if self.bar_location == 'right':
+                            msg = Twist()
+                            msg.angular.z = -0.35
+                            self.pub_twist.publish(msg)
+                            #rospy.sleep(1)
+                        else:
+                            msg = Twist()
+                            msg.angular.z = 0.35
+                            self.pub_twist.publish(msg)
+                            #rospy.sleep(1)
 
                     else:
                         x,y,w,h = cv2.boundingRect(contours[0])
@@ -155,6 +162,7 @@ class restaurant(object):
                         twist_msg = Twist()
                         target_x = target_x + target_w/2
                         target_y = target_y + target_h/2
+                        print(target_w*target_h)
                         if target_w*target_h <= 5000:
                             print('[INFO] Fail to find the costumer')
                             #msg = Twist()
@@ -246,7 +254,7 @@ class restaurant(object):
             #twist_msg.angular.z = 2.5
             #self.pub_twist.publish(twist_msg)
 
-            twist_msg.angular.z = 0.35
+            twist_msg.angular.z = 1.5
             goal_angualr = 0.5*3.14
             angular_duration = int(goal_angualr / twist_msg.angular.z)
             self.ticks = angular_duration * self.rate
@@ -307,7 +315,7 @@ class restaurant(object):
             #twist_msg.angular.z = -0.3
             #self.pub_twist.publish(twist_msg)
 
-            twist_msg.angular.z = -0.35
+            twist_msg.angular.z = -1.5
             goal_angualr = - 0.5*3.14
             angular_duration = int(goal_angualr / twist_msg.angular.z)
             self.ticks = angular_duration * self.rate
@@ -323,7 +331,7 @@ class restaurant(object):
             twist_msg.angular.z = 0
             twist_msg.linear.x = 0.15
             
-            goal_linear = 0.5
+            goal_linear = 1
             linear_duration = int(goal_linear / twist_msg.linear.x)
             self.ticks = linear_duration * self.rate
             
@@ -345,7 +353,7 @@ class restaurant(object):
                 self.sh.say('the costumer ordered ' + self.object, self.voice)
                 self.sh.say('please put the object in my arm', self.voice)
                 self.pub_arm_command_1.publish('nav2arm')
-                rospy.sleep(30)
+                rospy.sleep(20)
                 self.pub_person_pose.publish(self.person_pose)
             else:
                 self.sh.say('i have reached the bar', self.voice)
@@ -357,7 +365,7 @@ class restaurant(object):
         if msg.data == 'in_position_person':
             self.sh.say('here is the ' + self.object, self.voice)
             self.pub_arm_command_2.publish('navi_finish')
-            rospy.sleep(30)
+            rospy.sleep(20)
             self.sh.say('now i will go back to bar', self.voice)
             self.pub_bar_pose.publish(self.bar_pose)
 
