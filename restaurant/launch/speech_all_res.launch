@@ -21,11 +21,12 @@
 	
 	
 	<node pkg="restaurant" type="speech_recognition_res.py" name="speech_recognition_res" launch-prefix="xterm -e" respawn="true" respawn_delay="1" />-->
+	<node pkg="restaurant" type="res_control.py" name="res_control" launch-prefix="xterm -e" />
 
 	<node pkg="sound_play" type="soundplay_node.py" name="sound_play" launch-prefix="xterm -e" />
 	<node pkg="xfei_asr" type="speech_recognition" name="speech_recognition" launch-prefix="xterm -e" respawn="true" respawn_delay="1" />
 
-	<node pkg="restaurant" type="res_control.py" name="res_control" launch-prefix="xterm -e" />
+	
 
 
 	<!-- 启动摄像头 astra/primesense -->

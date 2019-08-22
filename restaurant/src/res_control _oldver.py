@@ -1,8 +1,8 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-    Date: 2019/08/22
-    Author: Zhang Mingxin
+    Date: 2019/06/25
+    Author: Zijian Guo
     Abstract: Code for restaurant project
 """
 import roslib
@@ -33,7 +33,6 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseWithCovariance, PoseWithCovarianceStamped
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from darknet_ros_msgs.msg import BoundingBoxes
 
 class restaurant(object):
     """
@@ -56,8 +55,6 @@ class restaurant(object):
         self.sub_door_detect_topic_name = None
         self.sub_start_topic_name       = None
         self.sub_camera_topic_name       = None
-        
-        self.boundingbox = []
 
         # Variables
         self.path_save = '/home/zmx/catkin_ws/src/restaurant/result/man_in_yellow.jpg'
@@ -76,7 +73,7 @@ class restaurant(object):
         self.bar_location = ''
         self.mid_x = 320
         self.mid_y = 200
-        self.areasize = 80000
+        self.area = 90000
 
         self.ticks = 0
         self.rate = 50
@@ -92,33 +89,125 @@ class restaurant(object):
         #play_signal_sound()
         print("[INFO] START")
         while True:
-		    while True:		#先转向招手的人
-		        if self.is_start_find_person:
-		        	os.system("gnome-terminal -x bash -c 'roslaunch darknet_ros darknet_ros.launch'")
-		        	rospy.sleep(10)
-		            while not self.is_find_person:
-		                rospy.Subscriber(self.sub_detect_result_topic_name, BoundingBoxes, self.WaveCallback)
-		                if len(self.boundingbox)==0:
-		                    print('[INFO] Fail to find the costumer')
+            if self.is_start_find_person:
+                file_path = '/home/zmx/catkin_ws/data/haarcascades/haarcascade_frontalface_default.xml'
+                # 人脸识别分类器
+                faceCascade = cv2.CascadeClassifier(file_path)
+                # 开启摄像头
+                cap = cv2.VideoCapture(1)
+                ok = True
+                # set yellow thresh[0, 70, 70], [100, 255, 255]
+                lower_yellow = np.array([0, 105, 139])
+                upper_yellow = np.array([37, 255, 255])
+                kernel_4 = np.ones((4,4),np.uint8)#4x4的卷积核
+                while not self.is_find_person:
+                    # 读取摄像头中的图像，ok为是否读取成功的判断参数
+                    ok, img = cap.read()
 
-		                    if self.bar_location == 'right':
-		                        msg = Twist()
-		                        msg.angular.z = -0.35
-		                        print('turn right')
-		                        self.pub_twist.publish(msg)
-		                        #rospy.sleep(1)
-		                    else:
-		                        msg = Twist()
-		                        msg.angular.z = 0.35
-		                        print('turn left')
-		                        self.pub_twist.publish(msg)
-		                        #rospy.sleep(1)
-		                else:
-		                    break
-		            break
-		    
-	        self.posedect()		#开始靠近招手的人
-	        rospy.sleep(20)		#20s后开始下一次循环
+                    # 读取ros话题中的图像
+                    # img = self.camera_img
+
+                    # 高斯滤波
+                    img = cv2.GaussianBlur(img,(5,5),0)
+                    # 转换成HSV
+                    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+                    # get mask
+                    mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+                    # detect yellow
+                    # res = cv2.bitwise_and(img, img, mask=mask)
+                    #下面四行是用卷积进行滤波
+                    erosion = cv2.erode(mask,kernel_4,iterations = 1)
+                    erosion = cv2.erode(erosion,kernel_4,iterations = 1)
+                    dilation = cv2.dilate(erosion,kernel_4,iterations = 1)
+                    dilation = cv2.dilate(dilation,kernel_4,iterations = 1)
+                    #target是把原图中的非目标颜色区域去掉剩下的图像
+                    target = cv2.bitwise_and(img, img, mask=dilation)
+                    #将滤波后的图像变成二值图像放在binary中
+                    ret, binary = cv2.threshold(dilation,127,255,cv2.THRESH_BINARY) 
+                    #在binary中发现轮廓，轮廓按照面积从小到大排列
+                    binary, contours, hierarchy = cv2.findContours(binary,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+                    
+                    if len(contours) == 0:
+                        print('[INFO] Fail to find the costumer')
+                        if self.bar_location == 'right':
+                            msg = Twist()
+                            msg.angular.z = -0.35
+                            self.pub_twist.publish(msg)
+                            #rospy.sleep(1)
+                        else:
+                            msg = Twist()
+                            msg.angular.z = 0.35
+                            self.pub_twist.publish(msg)
+                            #rospy.sleep(1)
+
+                    else:
+                        x,y,w,h = cv2.boundingRect(contours[0])
+                        # cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,),2)
+                        # 找出最大的框
+                        target_x = 0
+                        target_y = 0
+                        target_w = 0
+                        target_h = 0
+                        for item in contours:
+                            x,y,w,h = cv2.boundingRect(item)
+                            if w*h>target_h*target_w:
+                                target_h = h
+                                target_w = w
+                                target_x = x
+                                target_y = y
+                        print('[INFO] Find person in (%d, %d)'%(target_x, target_y))
+                        print('[INFO] person area = ', target_h*target_w)
+                        cv2.rectangle(img,(target_x, target_y),(target_x + target_w, target_y + target_h),(0,255,),2)
+                        # 按框的位置来判断机器人运动
+                        twist_msg = Twist()
+                        target_x = target_x + target_w/2
+                        target_y = target_y + target_h/2
+                        print(target_w*target_h)
+                        if target_w*target_h <= 5000:
+                            print('[INFO] Fail to find the costumer')
+                            #msg = Twist()
+                            #msg.angular.z = 0.35
+                            #self.pub_twist.publish(msg)
+                            
+                            if self.bar_location == 'right':
+                                msg = Twist()
+                                msg.angular.z = -0.35
+                                self.pub_twist.publish(msg)
+                                #rospy.sleep(1)
+                            else:
+                                msg = Twist()
+                                msg.angular.z = 0.35
+                                self.pub_twist.publish(msg)
+                                #rospy.sleep(1)
+                            
+                        elif abs(target_x-self.mid_x)<100:
+                            if abs(target_w*target_h-self.area)<5000:
+                                self.is_stop = True
+                                self.is_find_person = True
+                                self.sh.say('i have found the person')
+                                self.start_res()
+                                cv2.imwrite(self.path_save, img)
+                            elif target_w*target_h-self.area>5000:
+                                twist_msg.linear.x = -0.1
+                                self.pub_twist.publish(twist_msg)
+                                #rospy.sleep(1)
+                            else:
+                                twist_msg.linear.x = 0.1
+                                self.pub_twist.publish(twist_msg)
+                                #rospy.sleep(1)
+                        elif target_x-self.mid_x>100:
+                            twist_msg.angular.z = -0.2
+                            self.pub_twist.publish(twist_msg)
+                            #rospy.sleep(1)
+                        else:
+                            twist_msg.angular.z = 0.2
+                            self.pub_twist.publish(twist_msg)
+                            #rospy.sleep(1)
+                    cv2.imshow('image', img)
+                    #cv2.imshow('Mask', mask)
+                    #cv2.imshow('Result', res)
+                    cv2.waitKey(1)
+                cv2.destroyAllWindows()
 
 
     def get_params(self):
@@ -137,7 +226,6 @@ class restaurant(object):
         self.sub_amcl_pose_topic_name   = rospy.get_param('sub_amcl_pose_topic_name',   '/amcl_pose')
         self.sub_door_detect_topic_name = rospy.get_param('sub_door_detect_topic_name', '/kamerider_image/door_detect')
         self.sub_start_topic_name       = rospy.get_param('sub_start_topic_name',       '/start')
-        self.sub_detect_result_topic_name   = rospy.get_param('sub_detect_result_topic_name', '/darknet_ros/bounding_boxes')
         # self.sub_camera_topic_name      = rospy.get_param('sub_camera_topic_name',      '/camera1/rgb/image_raw')
 
         self.pub_destination = rospy.Publisher(self.pub_destination_topic_name, String, queue_size=10)
@@ -152,89 +240,12 @@ class restaurant(object):
         rospy.Subscriber(self.sub_start_topic_name, String,                         self.startCallback)
         rospy.Subscriber(self.sub_door_detect_topic_name, String,                   self.doorCallback)
         rospy.Subscriber(self.sub_amcl_pose_topic_name, PoseWithCovarianceStamped,  self.amclCallback)
-        rospy.Subscriber(self.sub_detect_result_topic_name, BoundingBoxes, self.WaveCallback)
         # rospy.Subscriber(self.sub_camera_topic_name, Image,                         self.cameraCallback)
 
     def start_res(self):
         # 播放初始化的音频，并提醒操作者如何使用语音操作Jack
         self.sh.say("Hello my name is Jack", self.voice)
-        #self.sh.say('If you need my help, please say "Hi Jack", then you can tell me your order after the prompt tone.', self.voice)
-        
-    def WaveCallback(self, msg):
-        self.boundingbox = msg.bounding_boxes
-        
-    def posedect(self):
-        if self.is_start_find_person:
-            while not self.is_find_person:
-                xmin = 0
-                xmax = 0
-                ymin = 0
-                ymax = 0
-                middle_x = 0
-                mid_x = 0
-                area = 0
-                self.avg_depth = 0.0
-                #wprint(boundingbox)
-                for bx in self.boundingbox:
-                    if bx.Class == 'waving':
-                        xmin = bx.xmin
-                        xmax = bx.xmax
-                        ymin = bx.ymin
-                        ymax = bx.ymax
-                        mid_x = (xmin+xmax)/2
-                        area = abs(xmax-xmin)*abs(ymax-ymin)
-                        
-                        if area >= self.avg_depth:
-                            self.avg_depth = area
-                            middle_x = mid_x
-                        self.is_find_bottle = True
-
-                if self.is_find_bottle:
-                    if self.avg_depth <= 8000:
-                        print('[INFO] Fail to find the costumer')
-                        #msg = Twist()
-                        #msg.angular.z = 0.35
-                        #self.pub_twist.publish(msg)
-                        
-                        if self.bar_location == 'right':
-                            msg = Twist()
-                            msg.angular.z = -0.35
-                            self.pub_twist.publish(msg)
-                            #rospy.sleep(1)
-                        else:
-                            msg = Twist()
-                            msg.angular.z = 0.35
-                            self.pub_twist.publish(msg)
-                            #rospy.sleep(1)
-                            
-                    elif abs(middle_x-320)<100:
-                        twist_msg = Twist()
-                        if abs(self.avg_depth-self.areasize)<6000:
-                            self.sh.say('i have found the person')
-                            self.is_stop = True
-                            self.is_find_person = True
-                            os.system('gnome-terminal -x bash -c "rosnode kill /darknet_ros"')
-                            self.boundingbox = []
-                            self.start_res()
-                        
-                        elif self.avg_depth-self.areasize>6000:
-                            twist_msg.linear.x = -0.1
-                            self.pub_twist.publish(twist_msg)
-                            #rospy.sleep(1)
-                        else:
-                            twist_msg.linear.x = 0.1
-                            self.pub_twist.publish(twist_msg)
-                            #rospy.sleep(1)
-                    elif middle_x-320>100:
-                        twist_msg = Twist()
-                        twist_msg.angular.z = -0.2
-                        self.pub_twist.publish(twist_msg)
-                        #rospy.sleep(1)
-                    else:
-                        twist_msg = Twist()
-                        twist_msg.angular.z = 0.2
-                        self.pub_twist.publish(twist_msg)
-                        #rospy.sleep(1)
+        self.sh.say('If you need my help, please say "Hi Jack", then you can tell me your order after the prompt tone.', self.voice)
         
     def startCallback(self, msg):
         rospy.sleep(3)
@@ -251,12 +262,21 @@ class restaurant(object):
             r = rospy.Rate(self.rate)
             #i = 0
             for i in range(self.ticks):
-                self.pub_twist.publish(twist_msg)
-                i=i+1
-                r.sleep()
+                 self.pub_twist.publish(twist_msg)
+                 i=i+1
+                 r.sleep()
             #rospy.sleep(1)
             os.system('gnome-terminal -x bash -c "rosrun kamerider_image_detection door_detect"')
             self.detecting_bar = True
+    
+    def cameraCallback(self, msg):
+        # 将接收到的图像转换到opencv
+        bridge = CvBridge()
+        try:
+            cv_image = bridge.imgmsg_to_cv2(msg, "bgr8")
+        except CvBridgeError as e:
+            print(e)
+        self.camera_img = cv_image
 
     def amclCallback(self, msg):
         if self.is_stop:
@@ -303,22 +323,22 @@ class restaurant(object):
             r = rospy.Rate(self.rate)
             #i = 0
             for i in range(self.ticks):
-                self.pub_twist.publish(twist_msg)
-                i=i+1
-                r.sleep()
+                 self.pub_twist.publish(twist_msg)
+                 i=i+1
+                 r.sleep()
             
             rospy.sleep(1)
             twist_msg.angular.z = 0
             twist_msg.linear.x = 0.15
             
-            goal_linear = 0.7
+            goal_linear = 1
             linear_duration = int(goal_linear / twist_msg.linear.x)
             self.ticks = linear_duration * self.rate
             
             for i in range(self.ticks):
-                self.pub_twist.publish(twist_msg)
-                i=i+1
-                r.sleep()            
+                 self.pub_twist.publish(twist_msg)
+                 i=i+1
+                 r.sleep()            
             
             rospy.sleep(1)
             self.is_start_find_person = True
@@ -333,7 +353,7 @@ class restaurant(object):
                 self.sh.say('the costumer ordered ' + self.object, self.voice)
                 self.sh.say('please put the object in my arm', self.voice)
                 self.pub_arm_command_1.publish('nav2arm')
-                rospy.sleep(10)
+                rospy.sleep(20)
                 self.pub_person_pose.publish(self.person_pose)
             else:
                 self.sh.say('i have reached the bar', self.voice)
@@ -345,7 +365,7 @@ class restaurant(object):
         if msg.data == 'in_position_person':
             self.sh.say('here is the ' + self.object, self.voice)
             self.pub_arm_command_2.publish('navi_finish')
-            rospy.sleep(10)
+            rospy.sleep(20)
             self.sh.say('now i will go back to bar', self.voice)
             self.pub_bar_pose.publish(self.bar_pose)
 
@@ -373,11 +393,11 @@ class restaurant(object):
             self.object = 'grape juice'
         elif 't' in output or 'green' in output:
             self.object = 'green tea'
-        elif 'sprinkles' in output or 'pringle' in output or 'principles' in output or 'principle' in output or 'wrinkles' in output or 'pills' in output or 'pretty' in output:
+        elif 'sprinkles' in output or 'pringle' in output or 'principles' in output or 'principle' in output or 'wrinkles' in output or 'pills' in output:
             self.object = 'pringles'
         elif 'onion' in output or 'soup' in output:
             self.object = 'onion soup'
-        elif 'been' in output or 'bean' in output or 'beer' in output:
+        elif 'been' in output or 'bean' in output:
             self.object = 'beans'
         elif 'cola' in output or 'coca' in output or 'coco' in output or 'coke' in output or 'cock' in output:
             self.object = 'coca cola'
